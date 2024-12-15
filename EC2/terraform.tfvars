@@ -1,0 +1,8 @@
+ami = ""
+subnet_id = ""
+sg = ""
+az = ""
+instance_type = ""
+associate_public_ip_address = ""
+ebs_volume_size = ""
+ebs_device_name = ""
