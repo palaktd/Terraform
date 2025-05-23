@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    {{- include "coder.labels" . | nindent 4 }}
+  spec:
+    replicas: {{ .Values.coder.replicaCount }}  
+    selector:
+      matchLabels:
+        {{- include "coder.selectorLabels" . | nindent 6 }}
+    template:
+      metadata:
+        labels:
+          {{- include "coder.labels" . | nindent 10 }}
+        annotations:
+          {{- toYaml .Values.coder.podAnnotations | nindent 10 }}
+      spec:
+        serviceAccountName: {{ .Values.coder.serviceAccount.name | quote }}
+        #runtimeClassName: {{ .Values.coder.runtimeClassName | quote }}
+        restartPolicy: {{ .Values.coder.containersspec.restartPolicy | quote }}
+        terminationGracePeriodSeconds: {{ .Values.coder.containersspec.terminationGracePeriodSeconds }}
+        {{- with .Values.coder.affinity }}
+        affinity:
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with .Values.coder.nodeSelector }}
+        # nodeSelector:
+        # {{- toYaml . | nindent 10 }}
+        # {{- end }}
+        containers:
+          - name: {{ .Chart.Name }}
+            image: {{ .Values.coder.image.repo }}:{{ .Values.coder.image.tag | default .Chart.AppVersion }}
+            imagePullPolicy: {{ .Values.coder.image.pullPolicy }}
+            {{- with .Values.coder.resources }}
+            resources:
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.coder.lifecycle }}
+            lifecycle:
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            env:
+              {{- range .Values.coder.env }}
+              - name: {{ .name }}
+                {{- if .value }}
+                value: {{ .value | quote }}
+              {{- else if .valueFrom }}
+                valueFrom:
+                  secretKeyRef:
+                    name: {{ .valueFrom.secretKeyRef.name }}
+                    key: {{ .valueFrom.secretKeyRef.key }}
+              {{- end }}
+              {{- end }}
+            ports:
+              - containerPort: {{ .Values.coder.service.containerPort }}
+                name: http
+                protocol: TCP
+            readinessProbe:
+              httpGet:
+                path: {{ .Values.coder.containersspec.probePath }}
+                {{- if eq .Values.coder.service.type "NodePort" }}
+                port: {{ .Values.coder.service.httpNodePort }}
+                {{- else }}
+                port: {{ .Values.coder.service.containerPort }}
+                {{- end }}
+                scheme: HTTP
+              {{- include "probe.fields" . | nindent 14 }}
+            livenessProbe:
+              httpGet:
+                path: {{ .Values.coder.containersspec.probePath }}
+                {{- if eq .Values.coder.service.type "NodePort" }}
+                port: {{ .Values.coder.service.httpNodePort }}
+                {{- else }}
+                port: {{ .Values.coder.service.containerPort }}
+                {{- end }}
+                scheme: HTTP
+              {{- include "probe.fields" . | nindent 14 }}
+            {{- with .Values.coder.securityContext }}
+            securityContext:
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.coder.volumeMounts }}
+            volumeMounts:
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        {{- with .Values.coder.volumes }}
+        volumes:
+        {{- toYaml . | nindent 8 }}
+        {{- end }}

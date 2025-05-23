@@ -1,0 +1,148 @@
+coder:
+  namespace: cdw
+  replicaCount: 1
+  workspaceProxy: false
+  env:
+    - name: CODER_PG_CONNECTION_URL
+      valueFrom:
+        secretKeyRef:
+          name: cdw-coder-db-url
+          key: CODER_PG_CONNECTION_URL
+    - name: CODER_ACCESS_URL
+      value: https://cdw.swf-dev.i.mercedes-benz.com
+    - name: CODER_WILDCARD_ACCESS_URL
+      value: "*.i.mercedes-benz.com"
+    - name: CODER_HTTP_ADDRESS
+      value: 0.0.0.0:30120
+    - name: CODER_PROVISIONER_DAEMONS
+      value: 50
+    - name: CODER_PROMETHEUS_ENABLE
+      value: true
+    - name: CODER_SESSION_DURATION
+      value: 12h
+    - name: CODER_OIDC_ISSUER_URL
+      value: https://sso-int.mercedes-benz.com
+    - name: CODER_OIDC_EMAIL_DOMAIN
+      value: mercedes-benz.com
+    - name: PROD_CODER_OIDC_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: cdw-oidc-creds
+          key: PROD_CODER_OIDC_CLIENT_ID
+    - name: PROD_CODER_OIDC_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: cdw-oidc-creds
+          key: PROD_CODER_OIDC_CLIENT_SECRET
+    - name: CODER_OIDC_SIGN_IN_TEXT
+      value: CDW Single Sign On
+
+  envUseClusterAccessURL: true
+
+  # coder.image -- The image to use for Coder.
+  image:
+    repo: 154453013990.dkr.ecr.eu-central-1.amazonaws.com/coder/coder
+    tag: v2.13.0
+    pullPolicy: Always
+    pullSecrets: []
+  annotations: {}
+  labels: {}
+  lifecycle: {}
+  podAnnotations: {}
+  podLabels: {}
+  # tolerations:
+  #   - key: nodegroup/cdw
+  #     operator: equals
+  #     value: true
+  #     effect: NoExecute
+  # nodeSelector:
+  #   nodegroup/cdw: "true"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    readOnlyRootFilesystem: null
+    seccompProfile:
+      type: RuntimeDefault
+    allowPrivilegeEscalation: false
+  volumes:
+    - name: cdw-oidc-creds
+      secret:
+        secretName: cdw-oidc-creds
+    - name: cdw-coder-db-url
+      secret:
+        secretName: cdw-coder-db-url
+  volumeMounts:
+    - name: cdw-oidc-creds
+      readOnly: true
+      mountPath: /mnt/cdw-oidc-creds
+    - name: cdw-coder-db-url
+      readOnly: true
+      mountPath: /mnt/cdw-coder-db-url
+  resources:
+    limits:
+      cpu: 2
+      memory: 2861Mi
+    requests:
+      cpu: 1
+      memory: 1907Mi
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/instance
+                  operator: In
+                  values:
+                    - coder
+            topologyKey: kubernetes.io/hostname
+          weight: 1
+  # coder.service -- The Service object to expose for Coder.
+  service:
+    enable: true
+    type: NodePort
+    sessionAffinity: None
+    externalTrafficPolicy: Cluster
+    loadBalancerIP: ""
+    annotations: {}
+    httpNodePort: 30120
+    containerPort: 8080
+
+  #coder.tagetgroupbinding -- To bind the external ALB with the EKS cluster.
+  targetgroupbinding:
+    enable: true
+    service: coder
+    targetGroupARN: {}
+    targetType: instance
+
+  #coder.externalsecret -- To use secret from AWS secret manager into kubernetes cluster
+  externalsecret:
+    enable: true
+    secretStoreRef: cdw
+    targetName: cdw-oidc-creds
+    secretName: oidc-creds
+    deletionPolicy: Retain
+    refreshInterval: 5m
+
+  #RDS DB URL details. To be used for external secret creation.
+  dbexternalsecret:
+    enable: true
+    secretStoreRef: cdw
+    targetName: cdw-coder-db-url
+    secretName: cdw-coder-db-url
+    deletionPolicy: Retain
+    refreshInterval: 5m
+
+  #coder.containerspec -- To provide container specification for coder app
+  containersspec:
+    restartPolicy: Always
+    terminationGracePeriodSeconds: 60
+    probePath: /healthz
+
+  #Service Account details
+  serviceAccount:
+    enable: true
+    enableDeployments: true
+    annotations: {}
+    name: coder

@@ -1,0 +1,26 @@
+apiVersion: v2
+name: coder
+description: Coder application deployment in SwF EKS cluster using Helm charts
+home: https://github.com/coder/coder
+
+type: application
+
+# This is the chart version and should be increamented when you are making changes to chart and
+# its templates including the app version
+version: 0.1.0
+# This is the version number of application being deployed. This version number should be increamented
+# each time you make changes to the application.
+appVersion: 0.1.0
+
+kubeVersion: ">= 1.19.0-0"
+
+keywords:
+  - coder
+  - terraform
+sources:
+  - https://github.com/coder/coder/tree/main/helm/coder
+icon: https://helm.coder.com/coder_logo_black.png
+
+maintainers:
+  - name: Palak Tiwari
+    email: palak.tiwari@mercedes-benz.com

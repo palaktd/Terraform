@@ -1,0 +1,13 @@
+{{- if .Values.coder.targetgroupbinding.enable }}
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: {{ .Release.Name }}-coder-tgb
+  namespace: {{ .Values.coder.namespace }}
+spec:
+  serviceRef:
+    name: {{ .Values.coder.targetgroupbinding.service }}
+    port: {{ .Values.coder.service.httpNodePort }}
+  targetGroupARN: {{ .Values.coder.targetgroupbinding.targetGroupARN }}
+  targetType: {{ .Values.coder.targetgroupbinding.targetType }}
+{{- end }}  
